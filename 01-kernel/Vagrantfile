@@ -1,0 +1,12 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "berkut_174/centos-7.9"
+  config.vm.box_version = "1.0.0"
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+  config.vm.provider "virtualbox" do |vb|
+    vb.cpus = "1"
+    vb.memory = "512"
+  end
+end

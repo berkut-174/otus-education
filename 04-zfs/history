@@ -1,0 +1,39 @@
+script script1
+lsmod | grep zfs
+lsblk
+zpool create otus1 mirror /dev/sda /dev/sdb
+zpool create otus2 mirror /dev/sdc /dev/sdd
+zpool create otus3 mirror /dev/sde /dev/sdf
+zpool create otus4 mirror /dev/sdg /dev/sdh
+zpool list
+zpool status
+zfs set compression=lzjb otus1
+zfs set compression=lz4 otus2
+zfs set compression=gzip-9 otus3
+zfs set compression=zle otus4
+zfs get compression
+wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.15.5.tar.xz
+for i in {1..4}; do tar xf linux-5.15.5.tar.xz -C "/otus${i}" --exclude='drivers/*' --exclude='arch/*'; done
+ls /otus* -l
+zfs list
+zfs get compressratio
+exit
+
+script script2
+wget -O archive.tar.gz 'https://drive.google.com/u/0/uc?id=1KRBNW33QWqbvbVHa3hLJivOAt60yukkg&export=download'
+tar xvf archive.tar.gz
+zpool import -d zpoolexport
+zpool import -d zpoolexport otus
+zpool status otus
+zpool list otus
+zfs get available,readonly,recordsize,compression,checksum otus
+exit
+
+script script3
+wget -O otus_task3.file 'https://drive.google.com/u/0/uc?id=1gH8gCL9y7Nd5Ti3IRmplZPF1XjzxeRAG&export=download'
+zfs receive otus/test@today < otus_task3.file
+zfs get all otus/test
+zfs get all otus/test@today
+ls /otus/test -1
+find /otus/test -name 'secret_message' -exec cat {} \;
+exit

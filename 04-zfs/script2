@@ -1,0 +1,74 @@
+Script started on Sun Nov 28 10:27:35 2021
+]0;root@zfs:~[?1034h[root@zfs ~]# wget -O archive.tar.gz 'https://drive.google.com/u/0/uc?id=1KRBNW33QWqbvbVHa3hLJivOAt60yukkg&export=download'
+--2021-11-28 10:27:43--  https://drive.google.com/u/0/uc?id=1KRBNW33QWqbvbVHa3hLJivOAt60yukkg&export=download
+Resolving drive.google.com (drive.google.com)... 173.194.221.194, 2a00:1450:4010:c0a::c2
+Connecting to drive.google.com (drive.google.com)|173.194.221.194|:443... connected.
+HTTP request sent, awaiting response... 302 Moved Temporarily
+Location: https://doc-0c-bo-docs.googleusercontent.com/docs/securesc/ha0ro937gcuc7l7deffksulhg5h7mbp1/8neru4k46uqqsamh7jh40ioaa97l046p/1638095250000/16189157874053420687/*/1KRBNW33QWqbvbVHa3hLJivOAt60yukkg?e=download [following]
+Warning: wildcards not supported in HTTP.
+--2021-11-28 10:27:48--  https://doc-0c-bo-docs.googleusercontent.com/docs/securesc/ha0ro937gcuc7l7deffksulhg5h7mbp1/8neru4k46uqqsamh7jh40ioaa97l046p/1638095250000/16189157874053420687/*/1KRBNW33QWqbvbVHa3hLJivOAt60yukkg?e=download
+Resolving doc-0c-bo-docs.googleusercontent.com (doc-0c-bo-docs.googleusercontent.com)... 142.250.150.132, 2a00:1450:4010:c1c::84
+Connecting to doc-0c-bo-docs.googleusercontent.com (doc-0c-bo-docs.googleusercontent.com)|142.250.150.132|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 7275140 (6.9M) [application/x-gzip]
+Saving to: 'archive.tar.gz'
+
+ 0% [                                                                                                                                                      ] 0           --.-K/s               2% [==>                                                                                                                                                   ] 149,658      728KB/s              7% [==========>                                                                                                                                           ] 551,280     1.30MB/s             25% [=====================================>                                                                                                                ] 1,872,138   2.95MB/s             47% [======================================================================>                                                                               ] 3,477,770   4.11MB/s             71% [==========================================================================================================>                                           ] 5,214,474   4.94MB/s             99% [===================================================================================================================================================>  ] 7,213,322   5.70MB/s             100%[=====================================================================================================================================================>] 7,275,140   5.72MB/s   in 1.2s   
+
+2021-11-28 10:27:49 (5.72 MB/s) - 'archive.tar.gz' saved [7275140/7275140]
+
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# tar xvf archive.tar.gz
+zpoolexport/
+zpoolexport/filea
+zpoolexport/fileb
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# zpool import -d zpoolexport
+   pool: otus
+     id: 6554193320433390805
+  state: ONLINE
+ action: The pool can be imported using its name or numeric identifier.
+ config:
+
+	otus                         ONLINE
+	  mirror-0                   ONLINE
+	    /root/zpoolexport/filea  ONLINE
+	    /root/zpoolexport/fileb  ONLINE
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# zpool import -d zpoolexport otus
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# zpool status otus
+  pool: otus
+ state: ONLINE
+  scan: none requested
+config:
+
+	NAME                         STATE     READ WRITE CKSUM
+	otus                         ONLINE       0     0     0
+	  mirror-0                   ONLINE       0     0     0
+	    /root/zpoolexport/filea  ONLINE       0     0     0
+	    /root/zpoolexport/fileb  ONLINE       0     0     0
+
+errors: No known data errors
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# zpool status otus[6P[1@l[1@i[1@s[1@t
+NAME   SIZE  ALLOC   FREE  CKPOINT  EXPANDSZ   FRAG    CAP  DEDUP    HEALTH  ALTROOT
+otus   480M  2.09M   478M        -         -     0%     0%  1.00x    ONLINE  -
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# zfs get available,readonly,recordsize,compression,checksum otus
+NAME  PROPERTY     VALUE      SOURCE
+otus  available    350M       -
+otus  readonly     off        default
+otus  recordsize   128K       local
+otus  compression  zle        local
+otus  checksum     sha256     local
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# exit
+
+Script done on Sun Nov 28 10:29:00 2021

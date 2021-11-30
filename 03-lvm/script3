@@ -1,0 +1,45 @@
+Script started on Thu 25 Nov 2021 06:58:45 PM UTC
+kroot@lvm:~\[root@lvm ~]# lvremove -y /dev/vg_root/lv_root
+  Logical volume "lv_root" successfully removed
+kroot@lvm:~\[root@lvm ~]# vgremove -y /dev/vg_root
+  Volume group "vg_root" successfully removed
+kroot@lvm:~\[root@lvm ~]# pvremove /dev/sdb
+  Labels on physical volume "/dev/sdb" successfully wiped.
+kroot@lvm:~\[root@lvm ~]# lvcreate -n LogVol_Home -L 2G /dev/VolGroup00
+  Logical volume "LogVol_Home" created.
+kroot@lvm:~\[root@lvm ~]# mkfs.xfs /dev/VolGroup00/LogVol_Home
+meta-data=/dev/VolGroup00/LogVol_Home isize=512    agcount=4, agsize=131072 blks
+         =                       sectsz=512   attr=2, projid32bit=1
+         =                       crc=1        finobt=0, sparse=0
+data     =                       bsize=4096   blocks=524288, imaxpct=25
+         =                       sunit=0      swidth=0 blks
+naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
+log      =internal log           bsize=4096   blocks=2560, version=2
+         =                       sectsz=512   sunit=0 blks, lazy-count=1
+realtime =none                   extsz=4096   blocks=0, rtextents=0
+kroot@lvm:~\[root@lvm ~]# mount /dev/VolGroup00/LogVol_Home /mnt/
+kroot@lvm:~\[root@lvm ~]# cp -aR /home/* /mnt/
+kroot@lvm:~\[root@lvm ~]# rm -rf /home/*
+kroot@lvm:~\[root@lvm ~]# umount /mnt
+kroot@lvm:~\[root@lvm ~]# mount /dev/VolGroup00/LogVol_Home /home/
+kroot@lvm:~\[root@lvm ~]# echo "`blkid | grep Home | awk '{print $2}'` /home xfs defaults 0 0" >> /etc/fstab
+kroot@lvm:~\[root@lvm ~]# touch /home/file{1..20}
+kroot@lvm:~\[root@lvm ~]# ls /home
+file1  file10  file11  file12  file13  file14  file15  file16  file17  file18  file19  file2  file20  file3  file4  file5  file6  file7  file8  file9  [0m[01;34mvagrant[0m
+kroot@lvm:~\[root@lvm ~]# lvcreate -L 100MB -s -n home_snap /dev/VolGroup00/LogVol_Home
+  Rounding up size to full physical extent 128.00 MiB
+  Logical volume "home_snap" created.
+kroot@lvm:~\[root@lvm ~]# rm -f /home/file{11..20}
+kroot@lvm:~\[root@lvm ~]# ls /home
+file1  file10  file2  file3  file4  file5  file6  file7  file8  file9  [0m[01;34mvagrant[0m
+kroot@lvm:~\[root@lvm ~]# umount /home
+kroot@lvm:~\[root@lvm ~]# lvconvert --merge /dev/VolGroup00/home_snap
+  Merging of volume VolGroup00/home_snap started.
+  VolGroup00/LogVol_Home: Merged: 100.00%
+kroot@lvm:~\[root@lvm ~]# mount /home
+kroot@lvm:~\[root@lvm ~]# ls /home
+file1  file10  file11  file12  file13  file14  file15  file16  file17  file18  file19  file2  file20  file3  file4  file5  file6  file7  file8  file9  [0m[01;34mvagrant[0m
+kroot@lvm:~\[root@lvm ~]# exit
+exit
+
+Script done on Thu 25 Nov 2021 07:00:02 PM UTC

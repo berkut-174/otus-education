@@ -1,0 +1,152 @@
+Script started on Sun Nov 28 10:39:33 2021
+]0;root@zfs:~[?1034h[root@zfs ~]# wget -O otus_task3.file 'https://drive.google.com/u/0/uc?id=1gH8gCL9y7Nd5Ti3IRmplZPF1XjzxeRAG&export=download'
+--2021-11-28 10:39:38--  https://drive.google.com/u/0/uc?id=1gH8gCL9y7Nd5Ti3IRmplZPF1XjzxeRAG&export=download
+Resolving drive.google.com (drive.google.com)... 173.194.221.194, 2a00:1450:4010:c0a::c2
+Connecting to drive.google.com (drive.google.com)|173.194.221.194|:443... connected.
+HTTP request sent, awaiting response... 302 Moved Temporarily
+Location: https://doc-00-bo-docs.googleusercontent.com/docs/securesc/ha0ro937gcuc7l7deffksulhg5h7mbp1/fvispou7i19626o2f01a1qfi767gad0c/1638095925000/16189157874053420687/*/1gH8gCL9y7Nd5Ti3IRmplZPF1XjzxeRAG?e=download [following]
+Warning: wildcards not supported in HTTP.
+--2021-11-28 10:39:41--  https://doc-00-bo-docs.googleusercontent.com/docs/securesc/ha0ro937gcuc7l7deffksulhg5h7mbp1/fvispou7i19626o2f01a1qfi767gad0c/1638095925000/16189157874053420687/*/1gH8gCL9y7Nd5Ti3IRmplZPF1XjzxeRAG?e=download
+Resolving doc-00-bo-docs.googleusercontent.com (doc-00-bo-docs.googleusercontent.com)... 142.250.150.132, 2a00:1450:4010:c03::84
+Connecting to doc-00-bo-docs.googleusercontent.com (doc-00-bo-docs.googleusercontent.com)|142.250.150.132|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 5432736 (5.2M) [application/octet-stream]
+Saving to: 'otus_task3.file'
+
+ 0% [                                                                                                                                                      ] 0           --.-K/s               3% [====>                                                                                                                                                 ] 191,802      934KB/s             22% [=================================>                                                                                                                    ] 1,233,159   2.93MB/s             51% [===========================================================================>                                                                          ] 2,773,255   4.04MB/s             79% [======================================================================================================================>                               ] 4,346,119   4.85MB/s             100%[=====================================================================================================================================================>] 5,432,736   5.63MB/s   in 0.9s   
+
+2021-11-28 10:39:43 (5.63 MB/s) - 'otus_task3.file' saved [5432736/5432736]
+
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# zfs receive otus/test@today < otus_task3.file
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# zfs get all otus/test
+NAME       PROPERTY              VALUE                  SOURCE
+otus/test  type                  filesystem             -
+otus/test  creation              Sun Nov 28 10:39 2021  -
+otus/test  used                  2.83M                  -
+otus/test  available             347M                   -
+otus/test  referenced            2.83M                  -
+otus/test  compressratio         1.32x                  -
+otus/test  mounted               yes                    -
+otus/test  quota                 none                   default
+otus/test  reservation           none                   default
+otus/test  recordsize            128K                   inherited from otus
+otus/test  mountpoint            /otus/test             default
+otus/test  sharenfs              off                    default
+otus/test  checksum              sha256                 inherited from otus
+otus/test  compression           zle                    inherited from otus
+otus/test  atime                 on                     default
+otus/test  devices               on                     default
+otus/test  exec                  on                     default
+otus/test  setuid                on                     default
+otus/test  readonly              off                    default
+otus/test  zoned                 off                    default
+otus/test  snapdir               hidden                 default
+otus/test  aclinherit            restricted             default
+otus/test  createtxg             770                    -
+otus/test  canmount              on                     default
+otus/test  xattr                 on                     default
+otus/test  copies                1                      default
+otus/test  version               5                      -
+otus/test  utf8only              off                    -
+otus/test  normalization         none                   -
+otus/test  casesensitivity       sensitive              -
+otus/test  vscan                 off                    default
+otus/test  nbmand                off                    default
+otus/test  sharesmb              off                    default
+otus/test  refquota              none                   default
+otus/test  refreservation        none                   default
+otus/test  guid                  6615482698043355072    -
+otus/test  primarycache          all                    default
+otus/test  secondarycache        all                    default
+otus/test  usedbysnapshots       0B                     -
+otus/test  usedbydataset         2.83M                  -
+otus/test  usedbychildren        0B                     -
+otus/test  usedbyrefreservation  0B                     -
+otus/test  logbias               latency                default
+otus/test  objsetid              92                     -
+otus/test  dedup                 off                    default
+otus/test  mlslabel              none                   default
+otus/test  sync                  standard               default
+otus/test  dnodesize             legacy                 default
+otus/test  refcompressratio      1.32x                  -
+otus/test  written               0                      -
+otus/test  logicalused           3.53M                  -
+otus/test  logicalreferenced     3.53M                  -
+otus/test  volmode               default                default
+otus/test  filesystem_limit      none                   default
+otus/test  snapshot_limit        none                   default
+otus/test  filesystem_count      none                   default
+otus/test  snapshot_count        none                   default
+otus/test  snapdev               hidden                 default
+otus/test  acltype               off                    default
+otus/test  context               none                   default
+otus/test  fscontext             none                   default
+otus/test  defcontext            none                   default
+otus/test  rootcontext           none                   default
+otus/test  relatime              off                    default
+otus/test  redundant_metadata    all                    default
+otus/test  overlay               off                    default
+otus/test  encryption            off                    default
+otus/test  keylocation           none                   default
+otus/test  keyformat             none                   default
+otus/test  pbkdf2iters           0                      default
+otus/test  special_small_blocks  0                      default
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# zfs get all otus/test@today
+NAME             PROPERTY              VALUE                  SOURCE
+otus/test@today  type                  snapshot               -
+otus/test@today  creation              Fri May 15  7:26 2020  -
+otus/test@today  used                  0B                     -
+otus/test@today  referenced            2.83M                  -
+otus/test@today  compressratio         1.32x                  -
+otus/test@today  devices               on                     default
+otus/test@today  exec                  on                     default
+otus/test@today  setuid                on                     default
+otus/test@today  createtxg             805                    -
+otus/test@today  xattr                 on                     default
+otus/test@today  version               5                      -
+otus/test@today  utf8only              off                    -
+otus/test@today  normalization         none                   -
+otus/test@today  casesensitivity       sensitive              -
+otus/test@today  nbmand                off                    default
+otus/test@today  guid                  8120498839409938741    -
+otus/test@today  primarycache          all                    default
+otus/test@today  secondarycache        all                    default
+otus/test@today  defer_destroy         off                    -
+otus/test@today  userrefs              0                      -
+otus/test@today  objsetid              95                     -
+otus/test@today  mlslabel              none                   default
+otus/test@today  refcompressratio      1.32x                  -
+otus/test@today  written               2.83M                  -
+otus/test@today  clones                                       -
+otus/test@today  logicalreferenced     3.53M                  -
+otus/test@today  acltype               off                    default
+otus/test@today  context               none                   default
+otus/test@today  fscontext             none                   default
+otus/test@today  defcontext            none                   default
+otus/test@today  rootcontext           none                   default
+otus/test@today  encryption            off                    default
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# ls /otus/test -1
+10M.file
+Limbo.txt
+Moby_Dick.txt
+War_and_Peace.txt
+[0m[38;5;9mcinderella.tar[0m
+for_examaple.txt
+homework4.txt
+[38;5;27mtask1[0m
+world.sql
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# 
+]0;root@zfs:~[root@zfs ~]# find /otus/test -name 'secret_message' -exec cat {} \;
+https://github.com/sindresorhus/awesome
+]0;root@zfs:~[root@zfs ~]# exit
+
+Script done on Sun Nov 28 10:40:25 2021
