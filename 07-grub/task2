@@ -1,0 +1,32 @@
+Script started on 2021-12-01 06:30:14+00:00
+kroot@centos8:~\[root@centos8 ~]# 
+kroot@centos8:~\[root@centos8 ~]# 
+kroot@centos8:~\[root@centos8 ~]# lsblk
+NAME        MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+sr0          11:0    1 1024M  0 rom  
+vda         252:0    0   30G  0 disk 
+|-vda1      252:1    0    1G  0 part /boot
+`-vda2      252:2    0   29G  0 part 
+  |-cl-root 253:0    0 26.9G  0 lvm  /
+  `-cl-swap 253:1    0  2.1G  0 lvm  [SWAP]
+kroot@centos8:~\[root@centos8 ~]# 
+kroot@centos8:~\[root@centos8 ~]# 
+kroot@centos8:~\[root@centos8 ~]# vgs
+  VG #PV #LV #SN Attr   VSize   VFree
+  cl   1   2   0 wz--n- <29.00g    0 
+kroot@centos8:~\[root@centos8 ~]# 
+kroot@centos8:~\[root@centos8 ~]# 
+kroot@centos8:~\[root@centos8 ~]# export vg_old=cl
+kroot@centos8:~\[root@centos8 ~]# export vg_new=otus_root
+kroot@centos8:~\[root@centos8 ~]# 
+kroot@centos8:~\[root@centos8 ~]# vgrename ${vg_old} ${vg_new}
+  Volume group "cl" successfully renamed to "otus_root"
+kroot@centos8:~\[root@centos8 ~]# 
+kroot@centos8:~\[root@centos8 ~]# 
+kroot@centos8:~\[root@centos8 ~]# sed -i -E "/mapper/s/\b${vg_old}\b/${vg_new}/g" /etc/fstab /etc/default/grub /boot/grub2/grub*
+kroot@centos8:~\[root@centos8 ~]# 
+kroot@centos8:~\[root@centos8 ~]# 
+kroot@centos8:~\[root@centos8 ~]# dracut -f
+kroot@centos8:~\[root@centos8 ~]# exit
+
+Script done on 2021-12-01 06:31:18+00:00

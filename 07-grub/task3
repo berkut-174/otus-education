@@ -1,0 +1,60 @@
+Script started on 2021-12-01 06:59:10+00:00
+kroot@centos8:~\[root@centos8 ~]# mkdir -p /usr/lib/dracut/modules.d/01test
+kroot@centos8:~\[root@centos8 ~]# 
+kroot@centos8:~\[root@centos8 ~]# cat > /usr/lib/dracut/modules.d/01test/module-setup.sh <<__EOF__
+> #!/bin/bash
+> 
+> check() {
+>     return 0
+> }
+> 
+> depends() {
+>     return 0
+> }
+> 
+> install() {
+>     inst_hook cleanup 00 "\${moddir}/test.sh"
+> }
+> __EOF__
+kroot@centos8:~\[root@centos8 ~]# 
+kroot@centos8:~\[root@centos8 ~]# 
+kroot@centos8:~\[root@centos8 ~]# cat > /usr/lib/dracut/modules.d/01test/test.sh <<__EOF__
+> #!/bin/bash
+> 
+> exec 0<>/dev/console 1<>/dev/console 2<>/dev/console
+> cat <<'msgend'
+> Hello! You are in dracut module!
+>  ___________________
+> < I'm dracut module >
+>  -------------------
+>    \\
+>     \\
+>         .--.
+>        |o_o |
+>        |:_/ |
+>       //   \\ \\
+>      (|     | )
+>     /'\\_   _/\`\\
+>     \\___)=(___/
+> msgend
+> sleep 10
+> echo " continuing...."
+> __EOF__
+kroot@centos8:~\[root@centos8 ~]# 
+kroot@centos8:~\[root@centos8 ~]# 
+kroot@centos8:~\[root@centos8 ~]# chmod +x /usr/lib/dracut/modules.d/01test/*.sh
+kroot@centos8:~\[root@centos8 ~]# 
+kroot@centos8:~\[root@centos8 ~]# dracut -f
+kroot@centos8:~\[root@centos8 ~]# 
+kroot@centos8:~\[root@centos8 ~]# lsinitrd -m /boot/initramfs-$(uname -r).img | grep test
+[01;31m[Ktest[m[K
+kroot@centos8:~\[root@centos8 ~]# 
+kroot@centos8:~\[root@centos8 ~]# sed -i 's/ *quiet//' /etc/default/grub
+kroot@centos8:~\[root@centos8 ~]# sed -i 's/ *rghb//' /etc/default/grub
+kroot@centos8:~\[root@centos8 ~]# 
+kroot@centos8:~\[root@centos8 ~]# grub2-mkconfig -o /boot/grub2/grub.cfg 
+Generating grub configuration file ...
+done
+kroot@centos8:~\[root@centos8 ~]# exit
+
+Script done on 2021-12-01 07:00:36+00:00
