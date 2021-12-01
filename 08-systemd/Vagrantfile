@@ -1,0 +1,16 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "centos/7"
+  config.vm.box_version = "2004.01"
+  config.vm.network "forwarded_port", guest: 8081, host: 8081
+  config.vm.network "forwarded_port", guest: 8082, host: 8082
+  config.vm.provider "virtualbox" do |vb|
+    vb.cpus = 1
+    vb.memory = 512
+  end
+  config.vm.provision "shell", path: "task1.sh"
+  config.vm.provision "shell", path: "task2.sh"
+  config.vm.provision "shell", path: "task3.sh"
+end
