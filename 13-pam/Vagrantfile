@@ -1,0 +1,27 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "centos/8"
+  config.vm.box_version = "1905.1"
+  config.vm.provider "virtualbox" do |vb|
+    vb.cpus = 1
+    vb.memory = 1024
+  end
+  config.vm.provision "shell", inline: <<-SHELL
+    groupadd admin
+    useradd test1
+    useradd test2
+    echo 'test1:123' | chpasswd
+    echo 'test2:123' | chpasswd
+    gpasswd -a vagrant admin
+    gpasswd -a test1 admin
+    sed -i.bak '/^account/ a account   required   pam_exec.so quiet /vagrant/login_script.sh' /etc/pam.d/system-auth
+    chmod +x /vagrant/login_script.sh
+    yum install -y yum-utils
+    yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+    yum install -y docker-ce docker-ce-cli containerd.io
+    systemctl enable --now docker.service
+    echo 'test1 ALL=(ALL) NOPASSWD: /bin/docker, /bin/systemctl restart docker.service' > /etc/sudoers.d/docker
+  SHELL
+end
