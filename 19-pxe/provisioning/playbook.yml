@@ -1,0 +1,90 @@
+---
+- hosts: pxeserver
+  become: true
+  tasks:
+  - name: install epel-release
+    yum:
+      name:
+        - epel-release
+  - name: install packages
+    yum:
+      name:
+        - dhcp
+        - nginx
+        - tftp-server
+        - syslinux-tftpboot
+  - name: make directory pxelinux.cfg
+    file:
+      path: /var/lib/tftpboot/pxelinux/pxelinux.cfg
+      state: directory
+  - name: make directory CentOS-8
+    file:
+      path: /var/lib/tftpboot/pxelinux/images/CentOS-8/
+      state: directory
+  - name: copy ks.cfg
+    copy:
+      src: files/ks.cfg
+      dest: /usr/share/nginx/html/ks.cfg
+  - name: copy dhcpd.conf
+    copy:
+      dest: /etc/dhcp/dhcpd.conf
+      content: |
+        option space pxelinux;
+        option pxelinux.magic code 208 = string;
+        option pxelinux.configfile code 209 = text;
+        option pxelinux.pathprefix code 210 = text;
+        option pxelinux.reboottime code 211 = unsigned integer 32;
+        option architecture-type code 93 = unsigned integer 16;
+        subnet 10.0.0.0 netmask 255.255.255.0 {
+          range 10.0.0.100 10.0.0.120;
+          class "pxeclients" {
+                match if substring (option vendor-class-identifier, 0, 9) = "PXEClient";
+                next-server 10.0.0.20;
+                if option architecture-type = 00:07 {
+                    filename "uefi/shim.efi";
+                } else {
+                    filename "pxelinux/pxelinux.0";
+                }
+          }
+        }
+  - name: copy pxelinux.cfg
+    copy:
+      dest: /var/lib/tftpboot/pxelinux/pxelinux.cfg/default
+      content: |
+        default menu
+        prompt 0
+        timeout 100
+        MENU TITLE Demo PXE setup
+        LABEL linux
+          menu label ^Install system
+          menu default
+          kernel images/CentOS-8/vmlinuz
+          initrd images/CentOS-8/initrd.img
+          append inst.repo=https://mirror.yandex.ru/centos/8-stream/BaseOS/x86_64/os/ inst.ks=http://10.0.0.20/ks.cfg
+  - name: copy pxelinux.0
+    copy:
+      src: /var/lib/tftpboot/pxelinux.0
+      dest: /var/lib/tftpboot/pxelinux/pxelinux.0
+      remote_src: yes
+  - name: copy menu.c32
+    copy:
+      src: /var/lib/tftpboot/menu.c32
+      dest: /var/lib/tftpboot/pxelinux/menu.c32
+      remote_src: yes
+  - name: get initrd.img
+    get_url:
+      url: https://mirror.yandex.ru/centos/8-stream/BaseOS/x86_64/os/images/pxeboot/initrd.img
+      dest: /var/lib/tftpboot/pxelinux/images/CentOS-8/initrd.img
+  - name: get vmlinuz
+    get_url:
+      url: https://mirror.yandex.ru/centos/8-stream/BaseOS/x86_64/os/images/pxeboot/vmlinuz
+      dest: /var/lib/tftpboot/pxelinux/images/CentOS-8/vmlinuz
+  - name: enable services
+    systemd:
+      name: "{{ item }}"
+      state: started
+      enabled: yes
+    with_items:
+      - dhcpd
+      - nginx
+      - tftp
