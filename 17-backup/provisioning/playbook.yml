@@ -1,0 +1,117 @@
+---
+- hosts: all
+  become: true
+  tasks:
+  - name: install epel-release
+    yum:
+      name:
+        - epel-release
+  - name: install borg
+    yum:
+      name:
+        - borgbackup
+
+- hosts: client
+  become: true
+  tasks:
+  - name: make directory ssh
+    file:
+      path: /root/.ssh
+      group: root
+      owner: root
+      mode: '0700'
+      state: directory
+  - name: generate rsa keypair
+    openssh_keypair:
+      owner: root
+      group: root
+      mode: '0600'
+      path: /root/.ssh/id_rsa
+    register: ssh_key
+  - name: disable strict key checking
+    copy:
+      dest: /root/.ssh/config
+      content: |
+        Host 192.168.11.*
+          StrictHostKeyChecking no
+  - name: copy borg environment
+    copy:
+      dest: /etc/sysconfig/borg
+      owner: root
+      group: root
+      mode: '0600'
+      content: |
+        BORG_PASSPHRASE=Otus1234
+        BORG_REPO=borg@192.168.11.160:/var/backup/borg
+        BACKUP_DIR=/etc
+  - name: copy borg service
+    copy:
+      dest: /etc/systemd/system/borg-backup.service
+      content: |
+        [Unit]
+        Description=Borg Backup
+        [Service]
+        Type=oneshot
+        EnvironmentFile=/etc/sysconfig/borg
+        ExecStartPre=-/bin/borg init -e repokey
+        ExecStart=/bin/borg create \
+          --stats \
+          ::etc-{now:%%Y-%%m-%%d_%%H:%%M:%%S} ${BACKUP_DIR}
+        ExecStart=/bin/borg check
+        ExecStart=/bin/borg prune \
+          --keep-within 1y \
+          --keep-daily 90 \
+          --keep-monthly -1
+  - name: copy borg timer
+    copy:
+      dest: /etc/systemd/system/borg-backup.timer
+      content: |
+        [Unit]
+        Description=Borg Backup
+        Requires=borg-backup.service
+        [Timer]
+        OnUnitActiveSec=5min
+        Unit=borg-backup.service
+        [Install]
+        WantedBy=timers.target
+  - name: enable borg timer
+    systemd:
+      name: borg-backup.timer
+      state: started
+      enabled: yes
+
+- hosts: backup
+  become: true
+  tasks:
+  - name: define disk
+    shell: "lsblk -p | awk -v size=2G '$0 ~ size { printf \"%s\", $1 }'"
+    register: backup_disk
+  - name: create partition
+    parted:
+      device: "{{ backup_disk.stdout }}"
+      number: 1
+      state: present
+  - name: make filesystem
+    filesystem:
+      fstype: ext4
+      dev: "{{ backup_disk.stdout }}1"
+  - name: create borg user
+    user:
+      name: borg
+  - name: mount partition
+    mount:
+      path: /var/backup
+      src: "{{ backup_disk.stdout }}1"
+      fstype: ext4
+      opts: defaults
+      state: mounted
+  - name: make directory backup
+    file:
+      path: /var/backup/borg
+      group: borg
+      owner: borg
+      state: directory
+  - name: add authorized key
+    authorized_key:
+     key: "{{ hostvars['client']['ssh_key']['public_key'] }}"
+     user: borg

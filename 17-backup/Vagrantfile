@@ -1,0 +1,33 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.provision "ansible" do |ansible|
+    ansible.playbook = "provisioning/playbook.yml"
+    ansible.limit = "all"
+    ansible.become = "true"
+  end
+  config.vm.define "client" do |client|
+    client.vm.box = "centos/7"
+    client.vm.host_name = "client"
+    client.vm.network "private_network", ip: "192.168.11.150", virtualbox__intnet: "backupnet"
+    client.vm.provider "virtualbox" do |vb|
+      vb.memory = "1024"
+      vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+    end
+  end
+  config.vm.define "backup" do |backup|
+    backup.vm.box = "centos/7"
+    backup.vm.host_name = "backup"
+    backup.vm.network "private_network", ip: "192.168.11.160", virtualbox__intnet: "backupnet"
+    backup.vm.provider "virtualbox" do |vb|
+      vb.memory = "1024"
+      vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+      vb.customize ["storagectl", :id, "--name", "SATA", "--add", "sata" ]
+      unless File.exist?("backup-disk.vdi")
+        vb.customize ["createmedium", "disk", "--filename", "backup-disk.vdi", "--size", 2048]
+      end
+      vb.customize ["storageattach", :id,  "--storagectl", "SATA", "--port", "1", "--device", 0, "--type", "hdd", "--medium", "backup-disk.vdi"]
+    end
+  end
+end
