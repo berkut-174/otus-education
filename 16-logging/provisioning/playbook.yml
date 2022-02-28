@@ -6,17 +6,9 @@
     yum:
       name: epel-release
       state: present
-  - name: set localtime
-    file:
-      src: /usr/share/zoneinfo/Europe/Moscow
-      dest: /etc/localtime
-      state: link
-    register: localtime
-  - name: restart chronyd
-    systemd:
-      name: chronyd
-      state: restarted
-    when: localtime.changed
+  - name: set timezone
+    timezone:
+      name: Europe/Moscow
 
 - hosts: web
   become: true
