@@ -1,0 +1,101 @@
+---
+- hosts: all
+  become: true
+  tasks:
+  - name: install epel-release
+    yum:
+      name: epel-release
+      state: present
+  - name: set localtime
+    file:
+      src: /usr/share/zoneinfo/Europe/Moscow
+      dest: /etc/localtime
+      state: link
+    register: localtime
+  - name: restart chronyd
+    systemd:
+      name: chronyd
+      state: restarted
+    when: localtime.changed
+
+- hosts: web
+  become: true
+  tasks:
+  - name: install packages
+    yum:
+      name:
+        - audispd-plugins
+        - audit
+        - nginx
+      state: present
+  - name: add local error_log to nginx.conf
+    replace:
+      path: /etc/nginx/nginx.conf
+      regexp: '(error_log .*);$'
+      replace: '\1 crit;'
+  - name: add remote error_log to nginx.conf
+    lineinfile:
+      path: /etc/nginx/nginx.conf
+      insertafter: 'error_log'
+      line: 'error_log syslog:server=192.168.50.15:514,tag=nginx_error;'
+      state: present
+  - name: add remote access_log to nginx.conf
+    lineinfile:
+      path: /etc/nginx/nginx.conf
+      insertafter: 'access_log'
+      line: '    access_log  syslog:server=192.168.50.15:514,tag=nginx_access,severity=info  combined;'
+      state: present
+  - name: restart nginx
+    systemd:
+      name: nginx
+      state: restarted
+  - name: add rule to audit
+    blockinfile:
+      path: /etc/audit/rules.d/audit.rules
+      block: |
+        -w /etc/nginx/nginx.conf -p wa -k nginx_conf
+        -w /etc/nginx/default.d/ -p wa -k nginx_conf
+  - name: configure auditd.conf
+    replace:
+      path: /etc/audit/auditd.conf
+      regexp: '#*name_format = .*'
+      replace: 'name_format = HOSTNAME'
+  - name: configure au-remote.conf
+    replace:
+      path: /etc/audisp/plugins.d/au-remote.conf
+      regexp: '#*active = .*'
+      replace: 'active = yes'
+  - name: configure audisp-remote.conf
+    replace:
+      path: /etc/audisp/audisp-remote.conf
+      regexp: '#*remote_server = .*'
+      replace: 'remote_server = 192.168.50.15'
+  - name: restart auditd
+    command: /sbin/service auditd restart
+
+- hosts: log
+  become: true
+  tasks:
+  - name: install packages
+    yum:
+      name:
+         - rsyslog
+         - audit
+      state: present
+  - name: copy rsyslog.conf
+    copy:
+      src: files/rsyslog.conf
+      dest: /etc/rsyslog.conf
+    register: rsyslog_conf
+  - name: restart rsyslog
+    systemd:
+      name: rsyslog
+      state: restarted
+    when: rsyslog_conf.changed
+  - name: configure auditd.conf
+    replace:
+      path: /etc/audit/auditd.conf
+      regexp: '#*tcp_listen_port = .*'
+      replace: 'tcp_listen_port = 60'
+  - name: restart auditd
+    command: /sbin/service auditd restart
