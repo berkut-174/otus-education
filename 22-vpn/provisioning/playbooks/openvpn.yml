@@ -1,0 +1,160 @@
+---
+- name: configure all
+  hosts: all
+  become: true
+  tasks:
+  - name: install epel-release
+    yum:
+      name: epel-release
+  - name: install openvpn
+    yum:
+      name:
+        - ansible
+        - openvpn
+        - iperf3
+  - name: disable selinux
+    selinux:
+      state: disabled
+
+- name: configure server
+  hosts: server
+  become: true
+  vars_files:
+    - ../defaults/main.yml
+  tasks:
+  - name: generate key vpn
+    command: openvpn --genkey --secret /etc/openvpn/static.key
+    args:
+      creates: /etc/openvpn/static.key
+  - name: get static.key
+    command: cat /etc/openvpn/static.key
+    register: openvpn_key
+  - name: configure vpn
+    copy:
+      dest: /etc/openvpn/server.conf
+      content: |
+        dev {{ openvpn_mode }}
+        ifconfig 10.10.10.1 255.255.255.0
+        topology subnet
+        secret /etc/openvpn/static.key
+        comp-lzo
+        status /var/log/openvpn-status.log
+        log /var/log/openvpn.log
+        verb 3
+    tags: setup_vpn
+  - name: restart vpn service
+    service:
+      name: openvpn@server
+      state: restarted
+      enabled: true
+    tags: setup_vpn
+
+- name: configure client
+  hosts: client
+  become: true
+  vars_files:
+    - ../defaults/main.yml
+  tasks:
+  - name: copy key vpn
+    copy:
+      dest: /etc/openvpn/static.key
+      content: |
+        {{ hostvars['server']['openvpn_key']['stdout'] }}
+  - name: configure vpn (server)
+    copy:
+      dest: /etc/openvpn/server.conf
+      content: |
+        dev {{ openvpn_mode }}
+        remote 192.168.10.10
+        ifconfig 10.10.10.2 255.255.255.0
+        topology subnet
+        route 192.168.10.0 255.255.255.0
+        secret /etc/openvpn/static.key
+        comp-lzo
+        status /var/log/openvpn-status.log
+        log /var/log/openvpn.log
+        verb 3
+    tags: setup_vpn
+  - name: restart vpn service
+    service:
+      name: openvpn@server
+      state: restarted
+      enabled: true
+    tags: setup_vpn
+
+- name: configure ras
+  hosts: ras
+  become: true
+  vars_files:
+    - ../defaults/main.yml
+  tasks:
+  - name: install easy-rsa
+    yum:
+      name: easy-rsa
+  - name:
+    shell:
+      cmd: |
+        /usr/share/easy-rsa/3/easyrsa init-pki
+        echo 'rasvpn' | /usr/share/easy-rsa/3/easyrsa build-ca nopass
+        echo 'rasvpn' | /usr/share/easy-rsa/3/easyrsa gen-req server nopass
+        echo 'yes' | /usr/share/easy-rsa/3/easyrsa sign-req server server
+        /usr/share/easy-rsa/3/easyrsa gen-dh
+        openvpn --genkey --secret ta.key
+        echo 'client' | /usr/share/easy-rsa/3/easyrsa gen-req client nopass
+        echo 'yes' | /usr/share/easy-rsa/3/easyrsa sign-req client client
+      chdir: /etc/openvpn
+  - name: configure vpn (server)
+    copy:
+      dest: /etc/openvpn/server.conf
+      content: |
+        port 1207
+        proto udp
+        dev {{ openvpn_mode }}
+        ca /etc/openvpn/pki/ca.crt
+        cert /etc/openvpn/pki/issued/server.crt
+        key /etc/openvpn/pki/private/server.key
+        dh /etc/openvpn/pki/dh.pem
+        server 10.10.10.0 255.255.255.0
+        ifconfig-pool-persist ipp.txt
+        client-to-client
+        client-config-dir /etc/openvpn/client
+        keepalive 10 120
+        comp-lzo
+        persist-key
+        persist-tun
+        status /var/log/openvpn-status.log
+        log /var/log/openvpn.log
+        verb 3
+    tags: setup_vpn
+  - name: restart vpn service
+    service:
+      name: openvpn@server
+      state: restarted
+      enabled: true
+    tags: setup_vpn
+  - name: configure vpn (client)
+    copy:
+      dest: /etc/openvpn/client/client.conf
+      content: |
+        dev tun
+        proto udp
+        remote 192.168.10.30 1207
+        client
+        resolv-retry infinite
+        ca ./ca.crt
+        cert ./client.crt
+        key ./client.key
+        route 192.168.10.0 255.255.255.0
+        persist-key
+        persist-tun
+        comp-lzo
+        verb 3
+  - name: copy files vpn (client)
+    copy:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+      remote_src: yes
+    with_items:
+      - { src: "/etc/openvpn/pki/ca.crt", dest: "/etc/openvpn/client/ca.crt" }
+      - { src: "/etc/openvpn/pki/issued/client.crt", dest: "/etc/openvpn/client/client.crt" }
+      - { src: "/etc/openvpn/pki/private/client.key", dest: "/etc/openvpn/client/client.key" }

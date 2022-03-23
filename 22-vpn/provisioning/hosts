@@ -1,0 +1,4 @@
+[openvpn]
+server ansible_host=192.168.10.10 ansible_user=vagrant ansible_ssh_private_key_file=.vagrant/machines/server/virtualbox/private_key
+client ansible_host=192.168.10.20 ansible_user=vagrant ansible_ssh_private_key_file=.vagrant/machines/client/virtualbox/private_key
+ras ansible_host=192.168.10.30 ansible_user=vagrant ansible_ssh_private_key_file=.vagrant/machines/ras/virtualbox/private_key
