@@ -1,0 +1,4 @@
+domain {% if ansible_hostname == "client1" %}newdns.lab{% endif %} dns.lab
+search {% if ansible_hostname == "client1" %}newdns.lab{% endif %} dns.lab
+nameserver 192.168.50.10
+nameserver 192.168.50.11
