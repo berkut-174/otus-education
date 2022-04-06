@@ -1,0 +1,86 @@
+---
+- name: configure all
+  hosts: all
+  become: true
+  tasks:
+  - name: install epel-release
+    yum:
+      name: epel-release
+
+- name: configure routers
+  hosts: routers
+  become: true
+  tasks:
+  - name: copy ifcfg-bond
+    copy:
+      dest: /etc/sysconfig/network-scripts/ifcfg-bond0
+      content: |
+        DEVICE=bond0
+        NAME=bond0
+        TYPE=Bond
+        BONDING_MASTER=yes
+        BONDING_OPTS="mode=1 miimon=100 fail_over_mac=1"
+        ONBOOT=yes
+        BOOTPROTO=static
+        IPADDR={{ bond_ip }}
+        NETMASK=255.255.255.252
+        NM_CONTROLLED=no
+  - name: copy ifcfg-eth
+    copy:
+      dest: "/etc/sysconfig/network-scripts/ifcfg-{{ item }}"
+      content: |
+        DEVICE={{ item }}
+        ONBOOT=yes
+        BOOTPROTO=none
+        MASTER=bond0
+        SLAVE=yes
+        NM_CONTROLLED=no
+    with_items:
+      - eth1
+      - eth2
+  - name: copy ifcfg-vlan
+    copy:
+      dest: "/etc/sysconfig/network-scripts/ifcfg-vlan{{ item }}"
+      content: |
+        ONBOOT=yes
+        TYPE=Ethernet
+        VLAN=yes
+        VLAN_NAME_TYPE=DEV_PLUS_VID_NO_PAD
+        DEVICE=vlan{{ item }}
+        PHYSDEV=eth3
+        VLAN_ID={{ item }}
+        NM_CONTROLLED=no
+    with_items:
+      - 100
+      - 101
+    when: ansible_hostname == "centralRouter"
+  - name: restart network
+    service:
+      name: network
+      state: restarted
+      enabled: true
+
+- name: configure clients
+  hosts: clients
+  become: true
+  tasks:
+  - name: copy ifcfg-vlan
+    copy:
+      dest: "/etc/sysconfig/network-scripts/ifcfg-vlan{{ vlan_id }}"
+      content: |
+        ONBOOT=yes
+        TYPE=Ethernet
+        VLAN=yes
+        VLAN_NAME_TYPE=DEV_PLUS_VID_NO_PAD
+        DEVICE=vlan{{ vlan_id }}
+        PHYSDEV=eth1
+        VLAN_ID={{ vlan_id }}
+        BOOTPROTO=static
+        IPADDR={{ vlan_ip }}
+        NETMASK=255.255.255.0
+        NM_CONTROLLED=no
+  - name: restart network
+    service:
+      name: network
+      state: restarted
+      enabled: true
