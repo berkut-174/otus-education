@@ -1,0 +1,99 @@
+---
+- name: configure all
+  hosts: all
+  become: true
+  tasks:
+  - name: install epel-release
+    yum:
+      name: epel-release
+  - name: enable forwarding
+    sysctl:
+      name: net.ipv4.conf.all.forwarding
+      value: 1
+  - name: disable firewalld
+    service:
+      name: firewalld
+      state: stopped
+      enabled: false
+
+- name: configure servers
+  hosts: servers
+  become: true
+  tasks:
+  - name: install nginx
+    yum:
+      name: nginx
+  - name: enable nginx
+    service:
+      name: nginx
+      state: started
+      enabled: true
+
+- name: configure centralRouter
+  hosts: centralRouter
+  become: true
+  tasks:
+  - name: install nmap
+    yum:
+      name: nmap
+
+- name: configure inetRouter
+  hosts: inetRouter
+  become: true
+  tasks:
+  - name: configure sshd
+    copy:
+      dest: /etc/ssh/sshd_config
+      content: |
+        HostKey /etc/ssh/ssh_host_rsa_key
+        HostKey /etc/ssh/ssh_host_ecdsa_key
+        HostKey /etc/ssh/ssh_host_ed25519_key
+        SyslogFacility AUTHPRIV
+        AuthorizedKeysFile      .ssh/authorized_keys
+        PasswordAuthentication yes
+        ChallengeResponseAuthentication no
+        GSSAPIAuthentication yes
+        GSSAPICleanupCredentials no
+        UsePAM yes
+        X11Forwarding yes
+        UseDNS no
+        AcceptEnv LANG LC_CTYPE LC_NUMERIC LC_TIME LC_COLLATE LC_MONETARY LC_MESSAGES
+        AcceptEnv LC_PAPER LC_NAME LC_ADDRESS LC_TELEPHONE LC_MEASUREMENT
+        AcceptEnv LC_IDENTIFICATION LC_ALL LANGUAGE
+        AcceptEnv XMODIFIERS
+        Subsystem       sftp    /usr/libexec/openssh/sftp-server
+  - name: restart sshd
+    service:
+      name: sshd
+      state: restarted
+      enabled: true
+  - name: install iptables service
+    yum:
+      name: iptables-services
+  - name: copy iptables rules
+    copy:
+      dest: /etc/sysconfig/iptables
+      content: |
+        *filter
+        :INPUT DROP [0:0]
+        :FORWARD DROP [0:0]
+        :OUTPUT ACCEPT [0:0]
+        :TRAFFIC - [0:0]
+        :SSH-INPUT - [0:0]
+        :SSH-INPUTTWO - [0:0]
+        # TRAFFIC chain for Port Knocking. The correct port sequence in this example is  8881 -> 7777 -> 9991; any other sequence will drop the traffic
+        -A INPUT -j TRAFFIC
+        -A TRAFFIC -p icmp --icmp-type any -j ACCEPT
+        -A TRAFFIC -m state --state ESTABLISHED,RELATED -j ACCEPT
+        -A TRAFFIC -m state --state NEW -m tcp -p tcp --dport 22 -m recent --rcheck --seconds 30 --name SSH2 -j ACCEPT
+        -A TRAFFIC -m state --state NEW -m tcp -p tcp -m recent --name SSH2 --remove -j DROP
+        -A TRAFFIC -m state --state NEW -m tcp -p tcp --dport 9991 -m recent --rcheck --name SSH1 -j SSH-INPUTTWO
+        -A TRAFFIC -m state --state NEW -m tcp -p tcp -m recent --name SSH1 --remove -j DROP
+        -A TRAFFIC -m state --state NEW -m tcp -p tcp --dport 7777 -m recent --rcheck --name SSH0 -j SSH-INPUT
+        -A TRAFFIC -m state --state NEW -m tcp -p tcp -m recent --name SSH0 --remove -j DROP
+        -A TRAFFIC -m state --state NEW -m tcp -p tcp --dport 8881 -m recent --name SSH0 --set -j DROP
+        -A SSH-INPUT -m recent --name SSH1 --set -j DROP
+        -A SSH-INPUTTWO -m recent --name SSH2 --set -j DROP
+        -A TRAFFIC -j DROP
+        COMMIT
+        # END or further rules
