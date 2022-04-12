@@ -1,0 +1,3 @@
+[submodule "25-ldap/ansible-freeipa"]
+	path = 25-ldap/ansible-freeipa
+	url = git@github.com:berkut-174/ansible-freeipa.git
