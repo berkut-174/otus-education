@@ -1,0 +1,175 @@
+---
+- name: configure all
+  hosts: all
+  become: true
+  tasks:
+  - name: install epel-release
+    package:
+      name: epel-release
+      state: present
+      update_cache: true
+    when: ansible_distribution == "CentOS"
+  - name: install packages
+    package:
+      name:
+        - net-tools
+        - tcpdump
+        - traceroute
+        - vim
+      state: present
+      update_cache: true
+
+- name: configure routers
+  hosts: routers
+  become: true
+  tasks:
+  - name: enable forwarding
+    sysctl:
+      name: net.ipv4.conf.all.forwarding
+      value: 1
+      state: present
+
+- name: configure inetRouter
+  hosts: inetRouter
+  become: true
+  tasks:
+    - name: disable firewalld
+      service:
+        name: firewalld
+        state: stopped
+        enabled: false
+    - name: install iptables
+      yum:
+        name: iptables-services
+    - name: flush iptables
+      iptables:
+        flush: yes
+    - name: enable masquerade
+      iptables:
+        table: nat
+        chain: POSTROUTING
+        out_interface: eth0
+        jump: MASQUERADE
+    - name: save iptables rules
+      shell:
+        cmd: "iptables-save > /etc/sysconfig/iptables"
+    - name: enable iptables
+      service:
+        name: iptables
+        state: restarted
+        enabled: true
+    - name: disable NM for eth1
+      replace:
+        path: /etc/sysconfig/network-scripts/ifcfg-eth1
+        regexp: 'NM_CONTROLLED=.*'
+        replace: 'NM_CONTROLLED=no'
+    - name: add routes for eth1
+      copy:
+        dest: /etc/sysconfig/network-scripts/route-eth1
+        content: |
+          192.168.0.0/22 via 192.168.255.2
+          192.168.0.0/25 via 192.168.255.2
+          192.168.255.4/30 via 192.168.255.2
+          192.168.255.8/30 via 192.168.255.2
+    - name: restart network
+      service:
+        name: network
+        state: restarted
+        enabled: true
+
+- name: configure central network
+  hosts: central*
+  become: true
+  tasks:
+  - name: disable NM for eth0
+    lineinfile:
+      path: /etc/sysconfig/network-scripts/ifcfg-eth0
+      line: 'NM_CONTROLLED=no'
+  - name: disable default route
+    lineinfile:
+      dest: /etc/sysconfig/network-scripts/ifcfg-eth0
+      line: DEFROUTE=no
+  - block:
+    - name: disable NM for eth5
+      replace:
+        path: /etc/sysconfig/network-scripts/ifcfg-eth5
+        regexp: 'NM_CONTROLLED=.*'
+        replace: 'NM_CONTROLLED=no'
+    - name: add routes for eth5
+      copy:
+        dest: /etc/sysconfig/network-scripts/route-eth5
+        content: |
+          192.168.255.10 via 192.168.255.9
+          192.168.2.0/24 via 192.168.255.10
+    - name: disable NM for eth6
+      replace:
+        path: /etc/sysconfig/network-scripts/ifcfg-eth6
+        regexp: 'NM_CONTROLLED=.*'
+        replace: 'NM_CONTROLLED=no'
+    - name: add routes for eth6
+      copy:
+        dest: /etc/sysconfig/network-scripts/route-eth6
+        content: |
+          192.168.255.6 via 192.168.255.5
+          192.168.1.0/24 via 192.168.255.6
+    when: ansible_hostname == "centralRouter"
+  - name: restart network
+    service:
+      name: network
+      state: restarted
+      enabled: true
+
+- name: configure office1 network
+  hosts: office1*
+  become: true
+  tasks:
+  - name: install netplan
+    package:
+      name: netplan.io
+  - name: disable default route
+    blockinfile:
+      path: /etc/netplan/50-cloud-init.yaml
+      insertafter: 'dhcp4'
+      block: |2
+                    dhcp4-overrides:
+                        use-routes: false
+  - name: add default route
+    blockinfile:
+      path: /etc/netplan/50-vagrant.yaml
+      insertafter: "192.168.255.10|192.168.2.130"
+      block: |2
+              routes:
+                - to: default
+                  via: {{ gw }}
+  - name: apply netplan
+    command: netplan apply
+
+- name: configure office2 network
+  hosts: office2*
+  become: true
+  tasks:
+  - name: install netplan
+    package:
+      name: netplan.io
+  - name: configure netplan
+    copy:
+      dest: /etc/netplan/50-init.yaml
+      content: |
+        network:
+          version: 2
+          ethernets:
+            eth0:
+              dhcp4: true
+              dhcp4-overrides:
+                use-routes: false
+              match:
+                name: eth0
+              set-name: eth0
+            eth1:
+              addresses:
+              - {{ (ansible_facts.eth1.ipv4.address + '/' + ansible_facts.eth1.ipv4.netmask) | ipaddr('address/prefix') }}
+              routes:
+                - to: 0.0.0.0/0
+                  via: {{ gw }}
+  - name: apply netplan
+    command: netplan apply
