@@ -6,33 +6,33 @@ MACHINES = {
     :box_name => "centos/7",
     :vm_name => "inetRouter",
     :net => [
-      { ip: '192.168.20.1', adapter: 2, netmask: "255.255.255.252", gateway: '192.168.20.1', virtualbox__intnet: "intnet" },
-      { ip: '192.168.50.10', adapter: 3 }
+      { ip: '192.168.255.1', adapter: 2, netmask: "255.255.255.252", virtualbox__intnet: "router-net" },
+      { ip: '192.168.50.10', adapter: 8 }
     ]
   },
   :centralRouter => {
     :box_name => "centos/7",
     :vm_name => "centralRouter",
     :net => [
-      { ip: '192.168.20.2', adapter: 2, netmask: "255.255.255.252", gateway: '192.168.20.1', virtualbox__intnet: "intnet" },
-      { ip: '192.168.50.11', adapter: 3 }
-    ]
-  },
-  :inetRouter2 => {
-    :box_name => "centos/7",
-    :vm_name => "inetRouter2",
-    :net => [
-      { adapter: 2, type: "dhcp", name: "vboxnet3" },
-      { ip: '192.168.20.3', adapter: 3, netmask: "255.255.255.252", gateway: '192.168.20.1', virtualbox__intnet: "intnet" },
-      { ip: '192.168.50.12', adapter: 4 }
+      { ip: '192.168.255.2', adapter: 2, netmask: "255.255.255.252", gateway: '192.168.255.1', virtualbox__intnet: "router-net" },
+      { ip: "192.168.0.1", adapter: 3, netmask: "255.255.255.240", virtualbox__intnet: "dir-net" },
+      { ip: '192.168.50.11', adapter: 8 }
     ]
   },
   :centralServer => {
     :box_name => "centos/7",
     :vm_name => "centralServer",
     :net => [
-      { ip: '192.168.20.4', adapter: 2, netmask: "255.255.255.252", gateway: '192.168.20.1', virtualbox__intnet: "intnet" },
-      { ip: '192.168.50.13', adapter: 3 }
+      { ip: "192.168.0.2", adapter: 2, netmask: "255.255.255.240", gateway: "192.168.0.1", virtualbox__intnet: "dir-net" },
+      { ip: '192.168.50.12', adapter: 8 }
+    ]
+  },
+  :inetRouter2 => {
+    :box_name => "centos/7",
+    :vm_name => "inetRouter2",
+    :net => [
+      { type: "dhcp", adapter: 2 },
+      { ip: '192.168.50.13', adapter: 8 }
     ]
   }
 }
@@ -45,15 +45,13 @@ Vagrant.configure("2") do |config|
       boxconfig[:net].each do |ipconf|
         box.vm.network "private_network", ipconf
       end
-      box.vm.provision "shell",
-        run: "always",
-        inline: "ip route del default via 10.0.2.2 || true"
     end
   end
   config.vm.provision "ansible" do |ansible|
-    ansible.playbook = "provisioning/playbooks/iptables.yml"
+    ansible.playbook = "provisioning/playbook.yml"
     ansible.inventory_path = "provisioning/hosts"
     ansible.host_key_checking = "false"
+    # ansible.verbose = "vvv"
     ansible.become = "true"
   end
 end

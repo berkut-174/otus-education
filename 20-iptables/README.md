@@ -11,7 +11,7 @@
 - дефолт в инет оставить через inetRouter;
 - *реализовать проход на 80 порт без маскарадинга.
 
-Формат сдачи ДЗ — vagrant + ansible
+Формат сдачи ДЗ — vagrant + ansible.
 
 ## Структура стенда
 
@@ -34,8 +34,6 @@ sudo systemctl start iptables.service
 
 ```
 vagrant ssh centralRouter
-nmap -Pn --host-timeout 100 --max-retries 0 -p 8881 192.168.20.1
-nmap -Pn --host-timeout 100 --max-retries 0 -p 7777 192.168.20.1
-nmap -Pn --host-timeout 100 --max-retries 0 -p 9991 192.168.20.1
-ssh vagrant@192.168.20.1
+~vagrant/knock.sh 192.168.255.1 8881 7777 9991
+ssh vagrant@192.168.255.1
 ```

@@ -1,0 +1,176 @@
+---
+- name: configure all
+  hosts: all
+  become: true
+  tasks:
+  - name: install epel-release
+    package:
+      name: epel-release
+      state: present
+      update_cache: true
+    when: ansible_distribution == "CentOS"
+  - name: install packages
+    package:
+      name:
+        - net-tools
+        - tcpdump
+        - traceroute
+        - vim
+      state: present
+      update_cache: true
+
+- name: configure routers
+  hosts: routers
+  become: true
+  tasks:
+  - name: enable forwarding
+    sysctl:
+      name: net.ipv4.conf.all.forwarding
+      value: 1
+      state: present
+
+- name: configure inetRouter
+  hosts: inetRouter
+  become: true
+  tasks:
+    - name: disable firewalld
+      service:
+        name: firewalld
+        state: stopped
+        enabled: false
+    - name: install iptables
+      yum:
+        name: iptables-services
+    - name: flush iptables
+      iptables:
+        flush: yes
+    - name: enable masquerade
+      iptables:
+        table: nat
+        chain: POSTROUTING
+        out_interface: eth0
+        source: 192.168.0.0/16
+        jump: SNAT
+        to_source: 10.0.2.15
+    - name: copy iptables rules
+      copy:
+        dest: /etc/sysconfig/iptables
+        content: |
+          *nat
+          :PREROUTING ACCEPT [178:10808]
+          :INPUT ACCEPT [1:60]
+          :OUTPUT ACCEPT [7:548]
+          :POSTROUTING ACCEPT [7:548]
+          -A POSTROUTING -s 192.168.0.0/16 -o eth0 -j SNAT --to-source 10.0.2.15
+          COMMIT
+          *filter
+          :INPUT DROP [0:0]
+          :FORWARD DROP [0:0]
+          :OUTPUT ACCEPT [0:0]
+          :TRAFFIC - [0:0]
+          :SSH-INPUT - [0:0]
+          :SSH-INPUTTWO - [0:0]
+          -A INPUT -i lo -j ACCEPT
+          -A INPUT -j TRAFFIC
+          -A TRAFFIC -p icmp --icmp-type any -j ACCEPT
+          -A TRAFFIC -m state --state ESTABLISHED,RELATED -j ACCEPT
+          -A TRAFFIC -m state --state NEW -m tcp -p tcp --dport 22 -m recent --rcheck --seconds 30 --name SSH2 -j ACCEPT
+          -A TRAFFIC -m state --state NEW -m tcp -p tcp -m recent --name SSH2 --remove -j DROP
+          -A TRAFFIC -m state --state NEW -m tcp -p tcp --dport 9991 -m recent --rcheck --name SSH1 -j SSH-INPUTTWO
+          -A TRAFFIC -m state --state NEW -m tcp -p tcp -m recent --name SSH1 --remove -j DROP
+          -A TRAFFIC -m state --state NEW -m tcp -p tcp --dport 7777 -m recent --rcheck --name SSH0 -j SSH-INPUT
+          -A TRAFFIC -m state --state NEW -m tcp -p tcp -m recent --name SSH0 --remove -j DROP
+          -A TRAFFIC -m state --state NEW -m tcp -p tcp --dport 8881 -m recent --name SSH0 --set -j DROP
+          -A SSH-INPUT -m recent --name SSH1 --set -j DROP
+          -A SSH-INPUTTWO -m recent --name SSH2 --set -j DROP
+          -A TRAFFIC -j DROP
+          COMMIT
+    - name: disable NM for eth1
+      replace:
+        path: /etc/sysconfig/network-scripts/ifcfg-eth1
+        regexp: 'NM_CONTROLLED=.*'
+        replace: 'NM_CONTROLLED=no'
+    - name: add routes for eth1
+      copy:
+        dest: /etc/sysconfig/network-scripts/route-eth1
+        content: |
+          192.168.0.0/28 via 192.168.255.2
+    - name: restart network
+      service:
+        name: network
+        state: restarted
+        enabled: true
+    - name: configure sshd
+      copy:
+        dest: /etc/ssh/sshd_config
+        content: |
+          HostKey /etc/ssh/ssh_host_rsa_key
+          HostKey /etc/ssh/ssh_host_ecdsa_key
+          HostKey /etc/ssh/ssh_host_ed25519_key
+          SyslogFacility AUTHPRIV
+          AuthorizedKeysFile      .ssh/authorized_keys
+          PasswordAuthentication yes
+          ChallengeResponseAuthentication no
+          GSSAPIAuthentication yes
+          GSSAPICleanupCredentials no
+          UsePAM yes
+          X11Forwarding yes
+          UseDNS no
+          AcceptEnv LANG LC_CTYPE LC_NUMERIC LC_TIME LC_COLLATE LC_MONETARY LC_MESSAGES
+          AcceptEnv LC_PAPER LC_NAME LC_ADDRESS LC_TELEPHONE LC_MEASUREMENT
+          AcceptEnv LC_IDENTIFICATION LC_ALL LANGUAGE
+          AcceptEnv XMODIFIERS
+          Subsystem       sftp    /usr/libexec/openssh/sftp-server
+    - name: restart sshd
+      service:
+        name: sshd
+        state: restarted
+        enabled: true
+
+- name: configure central network
+  hosts: central*
+  become: true
+  tasks:
+  - name: disable NM for eth0
+    lineinfile:
+      path: /etc/sysconfig/network-scripts/ifcfg-eth0
+      line: 'NM_CONTROLLED=no'
+  - name: disable default route
+    lineinfile:
+      dest: /etc/sysconfig/network-scripts/ifcfg-eth0
+      line: DEFROUTE=no
+  - name: restart network
+    service:
+      name: network
+      state: restarted
+      enabled: true
+  - name: install nmap
+    package:
+      name: nmap
+      state: present
+      update_cache: true
+  - name: copy knock script
+    copy:
+      dest: ~vagrant/knock.sh
+      mode: '0755'
+      content: |
+        #!/bin/bash
+        HOST=$1
+        shift
+        for ARG in "$@"
+        do
+            nmap -Pn --host-timeout 100 --max-retries 0 -p $ARG $HOST
+        done
+    when: ansible_hostname == "centralRouter"
+  - block:
+    - name: install nginx
+      package:
+        name: nginx
+        state: present
+        update_cache: true
+    - name: enable nginx
+      service:
+        name: nginx
+        state: started
+        enabled: true
+    when: ansible_hostname == "centralServer"
