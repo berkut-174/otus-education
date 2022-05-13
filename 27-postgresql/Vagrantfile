@@ -1,0 +1,56 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+MACHINES = {
+  :vm1 => {
+    :box_name => "ubuntu/focal64",
+    :vm_name => "vm1",
+    :net => [
+      { ip: '192.168.255.1', adapter: 2, netmask: "255.255.255.248", virtualbox__intnet: "postgres-net" },
+      { ip: '192.168.50.10', adapter: 8 }
+    ]
+  },
+  :vm2 => {
+    :box_name => "ubuntu/focal64",
+    :vm_name => "vm2",
+    :net => [
+      { ip: '192.168.255.2', adapter: 2, netmask: "255.255.255.248", virtualbox__intnet: "postgres-net" },
+      { ip: '192.168.50.11', adapter: 8 }
+    ]
+  },
+  :vm3 => {
+    :box_name => "ubuntu/focal64",
+    :vm_name => "vm3",
+    :net => [
+      { ip: '192.168.255.3', adapter: 2, netmask: "255.255.255.248", virtualbox__intnet: "postgres-net" },
+      { ip: '192.168.50.12', adapter: 8 }
+    ]
+  },
+  :vm4 => {
+    :box_name => "ubuntu/focal64",
+    :vm_name => "vm4",
+    :net => [
+      { ip: '192.168.255.4', adapter: 2, netmask: "255.255.255.248", virtualbox__intnet: "postgres-net" },
+      { ip: '192.168.50.13', adapter: 8 }
+    ]
+  }
+}
+
+Vagrant.configure("2") do |config|
+  MACHINES.each do |boxname, boxconfig|
+    config.vm.define boxname do |box|
+      box.vm.box = boxconfig[:box_name]
+      box.vm.host_name = boxconfig[:vm_name]
+      boxconfig[:net].each do |ipconf|
+        box.vm.network "private_network", ipconf
+      end
+    end
+  end
+  config.vm.provision "ansible" do |ansible|
+    ansible.playbook = "provisioning/playbook.yml"
+    ansible.inventory_path = "provisioning/hosts"
+    ansible.host_key_checking = "false"
+    # ansible.verbose = "vvv"
+    ansible.become = "true"
+  end
+end

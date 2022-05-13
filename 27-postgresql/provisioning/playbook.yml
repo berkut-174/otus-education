@@ -1,0 +1,133 @@
+---
+- name: configure all
+  hosts: all
+  become: true
+  vars_files:
+    - vars.yml
+  tasks:
+  - name: install packages
+    package:
+      name:
+       - acl
+       - postgresql
+       - python3-psycopg2
+       - python3-ipaddr
+      state: present
+      update_cache: true
+  - name: set listen_addresses parametr
+    become_user: postgres
+    postgresql_set:
+      name: listen_addresses
+      value: "*"
+  - name: set wal_level parametr
+    become_user: postgres
+    postgresql_set:
+      name: wal_level
+      value: logical
+    when: ansible_hostname == "vm1" or ansible_hostname == "vm2"
+  - block:
+    - name: allow user access to db
+      become_user: postgres
+      postgresql_pg_hba:
+        dest: /etc/postgresql/12/main/pg_hba.conf
+        contype: host
+        databases: "{{ db_name }}"
+        users: "{{ db_user }}"
+        source: 192.168.255.0/29
+        method: md5
+      when: ansible_hostname != "vm4"
+    - name: create db
+      become_user: postgres
+      postgresql_db:
+        name: "{{ db_name }}"
+    - name: create user
+      become_user: postgres
+      postgresql_user:
+        db: "{{ db_name }}"
+        name: "{{ db_user }}"
+        password: "{{ db_pass }}"
+        role_attr_flags: REPLICATION
+    - name: grant access to db
+      become_user: postgres
+      postgresql_privs:
+        db: "{{ db_name }}"
+        roles: "{{ db_user }}"
+        type: database
+        privs: ALL
+    - name: create table test
+      become_user: postgres
+      postgresql_table:
+        db: "{{ db_name }}"
+        name: test
+        columns:
+        - id serial primary key
+        - name text
+    - name: create table test2
+      become_user: postgres
+      postgresql_table:
+        db: "{{ db_name }}"
+        name: test2
+        columns:
+        - id serial primary key
+        - name text
+    - name: allow port 5432 through the firewall
+      ufw:
+        rule: allow
+        port: 5432
+        proto: tcp
+    when: ansible_hostname != "vm4"
+  - name: allow user access to db
+    become_user: postgres
+    postgresql_pg_hba:
+      dest: /etc/postgresql/12/main/pg_hba.conf
+      contype: host
+      databases: "replication"
+      users: "{{ db_user }}"
+      source: 192.168.255.0/29
+      method: md5
+    when: ansible_hostname == "vm3"
+  - name: restart postgresql
+    service:
+      name: postgresql
+      state: restarted
+      enabled: true
+  - block:
+    - name: publication test
+      become_user: postgres
+      postgresql_publication:
+        db: "{{ db_name }}"
+        name: pub_test
+        tables:
+          - test
+    - name: grant access to schema
+      become_user: postgres
+      postgresql_privs:
+        db: "{{ db_name }}"
+        role: "{{ db_user }}"
+        state: present
+        type: table
+        objs: test
+        schema: public
+        privs: SELECT
+        grant_option: yes
+    when: ansible_hostname == "vm1"
+  - block:
+    - name: publication test2
+      become_user: postgres
+      postgresql_publication:
+        db: "{{ db_name }}"
+        name: pub_test2
+        tables:
+          - test2
+    - name: grant access to schema
+      become_user: postgres
+      postgresql_privs:
+        db: "{{ db_name }}"
+        role: "{{ db_user }}"
+        state: present
+        type: table
+        objs: test2
+        schema: public
+        privs: SELECT
+        grant_option: yes
+    when: ansible_hostname == "vm2"
